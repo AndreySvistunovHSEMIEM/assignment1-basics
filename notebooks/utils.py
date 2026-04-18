@@ -1,5 +1,9 @@
 import os
+import regex as re
 from typing import BinaryIO
+
+
+PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
 
 
 def find_chunk_boundaries(
@@ -50,11 +54,11 @@ def find_chunk_boundaries(
 
 
 def read_range_thread(fd: int, start: int, end: int) -> str:
-    return os.pread(fd, end - start, start).decode(encoding="utf-8", errors="ignore")
+    return re.finditer(PAT, os.pread(fd, end - start, start).decode(encoding="utf-8", errors="ignore"))
 
 
 def read_range_process(path: str, start: int, end: int) -> str:
     with open(path, "rb") as f:
         f.seek(start)
-        return f.read(end - start).decode("utf-8", "ignore")
+        return re.findall(PAT, f.read(end - start).decode("utf-8", "ignore"))
 
