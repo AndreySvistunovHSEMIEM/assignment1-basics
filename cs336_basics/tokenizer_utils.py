@@ -1,6 +1,7 @@
 import os
 import regex as re
 from typing import BinaryIO
+from collections import Counter
 
 
 PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
@@ -53,6 +54,34 @@ def find_chunk_boundaries(
     return sorted(set(chunk_boundaries))
 
 
+def get_freqs_of_words_and_pairs(
+    input_path: str, 
+    start: int, 
+    end: int,
+    split_special_token: bytes,
+) -> tuple[Counter[bytes], Counter[tuple[bytes]]]:
+    assert start <= end, f"Invalid boundary! start={start} is less than end={end}"
+
+    with open(input_path, "rb") as f:
+        f.seek(start)
+        words_freqs, pair_freqs = Counter(), Counter()
+
+        chunk = f.read(end - start).split(split_special_token)
+        for splitted_part in chunk:
+            for match in re.finditer(PAT, splitted_part.decode("utf-8", "ignore")):
+
+                pretoken = match.group()
+                # for i in pretoken:
+                #     if pretoken == "|"
+                word = tuple(bytes([b]) for b in pretoken.encode("utf-8"))
+                words_freqs[word] += 1
+
+                for i in range(len(word) - 1):
+                    pair_freqs[(word[i], word[i + 1])] += 1
+            
+    return words_freqs, pair_freqs
+
+
 def read_range_thread(fd: int, start: int, end: int) -> str:
     return re.finditer(PAT, os.pread(fd, end - start, start).decode(encoding="utf-8", errors="ignore"))
 
@@ -61,4 +90,3 @@ def read_range_process(path: str, start: int, end: int) -> str:
     with open(path, "rb") as f:
         f.seek(start)
         return re.findall(PAT, f.read(end - start).decode("utf-8", "ignore"))
-
