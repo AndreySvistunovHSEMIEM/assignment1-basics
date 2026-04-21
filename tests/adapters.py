@@ -89,7 +89,16 @@ def run_swiglu(
     # swiglu.w1.weight.data = w1_weight
     # swiglu.w2.weight.data = w2_weight
     # swiglu.w3.weight.data = w3_weight
-    raise NotImplementedError
+    from cs336_basics.layers import SwiGLU
+
+    swiglu = SwiGLU(d_model=d_model, d_ff=d_ff)
+    swiglu.w1.weight.data = w1_weight
+    swiglu.w2.weight.data = w2_weight
+    swiglu.w3.weight.data = w3_weight
+    return swiglu(in_features)
+
+
+
 
 
 def run_scaled_dot_product_attention(
@@ -110,7 +119,9 @@ def run_scaled_dot_product_attention(
     Returns:
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
-    raise NotImplementedError
+    from cs336_basics.layers_utils import scaled_dot_product_attention
+
+    return scaled_dot_product_attention(Q, K, V, mask)
 
 
 def run_multihead_self_attention(
@@ -206,7 +217,10 @@ def run_rope(
     Returns:
         Float[Tensor, " ... sequence_length d_k"]: Tensor with RoPEd input.
     """
-    raise NotImplementedError
+    from cs336_basics.layers import RoPE
+
+    layer = RoPE(theta=theta, d_k=d_k, max_seq_len=max_seq_len)
+    return layer(in_query_or_key, token_positions)
 
 
 def run_transformer_block(
@@ -441,7 +455,9 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         Float[Tensor, "..."]: Tensor of with the same shape as `in_features` with the output of
         softmax normalizing the specified `dim`.
     """
-    raise NotImplementedError
+    from cs336_basics.layers_utils import softmax
+
+    return softmax(in_features, dim)
 
 
 def run_cross_entropy(
@@ -569,7 +585,7 @@ def get_tokenizer(
     Returns:
         A BPE tokenizer that uses the provided vocab, merges, and special tokens.
     """
-    from cs336_basics.Tokenizer import Tokenizer
+    from cs336_basics.tokenizer import Tokenizer
 
     tokenizer = Tokenizer(vocab=vocab, merges=merges, special_tokens=special_tokens)
     return tokenizer
@@ -602,7 +618,7 @@ def run_train_bpe(
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
     """
-    from cs336_basics.Tokenizer import Tokenizer
+    from cs336_basics.tokenizer import Tokenizer
 
     tokenizer = Tokenizer(input_path=input_path, special_tokens=special_tokens)
     return tokenizer.train_bpe(vocab_size=vocab_size)
