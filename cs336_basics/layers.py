@@ -5,7 +5,7 @@ from torch import Tensor
 from jaxtyping import Float, Int
 from einops import einsum
 
-from layers_utils import sil
+from .layers_utils import silu_activation
 
 
 class Linear(nn.Module):
@@ -97,7 +97,6 @@ class SwiGLU(nn.Module):
         x_w1_w3 = x_w1 * x_w3
         return self.w2(x_w1_w3)
 
-
 class RoPE(nn.Module):
     def __init__(
             self,
@@ -108,39 +107,33 @@ class RoPE(nn.Module):
     ) -> None:
         super().__init__()
         assert d_k % 2 == 0, "d_k must be even!"
-        
-        k_elements = torch.arange(start=0, end=(d_k // 2), device=device)
-        positions = torch.arange(start=0, end=max_seq_len, device=device).unsqueeze(-1)
-        angles = positions / theta ** (2 * k_elements / d_k)
 
-        sin_elements = torch.sin(angles)
-        cos_elements = torch.cos(angles)
+        positions = torch.arange(0, max_seq_len, 1, device=device).unsqueeze(-1)
+        k_numbers = torch.arange(0, d_k // 2, 1, device=device)
 
-        self.d_k = d_k
-        self.max_seq_len = max_seq_len
-        self.device = device
-        
-        self.register_buffer("sin_elements", sin_elements, persistent=False)
-        self.register_buffer("cos_elements", cos_elements, persistent=False)
+        angles = positions / theta ** (2 * k_numbers / d_k)
 
+        cos = torch.cos(angles)
+        sin = torch.sin(angles)
+
+        self.register_buffer("cos_cached", cos, persistent=False)
+        self.register_buffer("sin_cached", sin, persistent=False)
 
     def forward(
-            self,
-            x: Float[Tensor, "... seq_len d_k"],
-            token_positions: Int[Tensor, "... seq_len"],
-    ) -> Float[Tensor, "... seq_len d_k"]:
+        self,
+        x: Float[Tensor, " ... sequence_length d_k"],
+        token_positions: Int[Tensor, " ... sequence_length"],
+    ) -> Float[Tensor, " ... sequence_length d_k"]:
         
-        result = torch.empty(x.size(), device=x.device, dtype=x.dtype)
+        even_part = x[..., 0::2]
+        odd_part = x[..., 1::2]
 
-        even_part = x[..., torch.arange(start=0, end=self.d_k, step=2)]
-        odd_part = x[..., torch.arange(start=1, end=self.d_k, step=2)]
-
-        even_part, odd_part  = (
-            even_part * self.cos_elements[token_positions] - odd_part * self.sin_elements[token_positions],
-            even_part * self.sin_elements[token_positions] + odd_part * self.cos_elements[token_positions],
+        even_part, odd_part = (
+            even_part * self.cos_cached[token_positions] - odd_part * self.sin_cached,
+            odd_part * self.cos_cached[token_positions] + even_part * self.sin_cached,
         )
 
-        result[..., 0::2] = even_part
-        result[..., 1::2] = odd_part
-        
-        return result
+        x[..., 0::2] = even_part
+        x[..., 1::2] = odd_part
+
+        return x
