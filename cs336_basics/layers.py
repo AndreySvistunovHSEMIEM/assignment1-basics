@@ -97,6 +97,7 @@ class SwiGLU(nn.Module):
         x_w1_w3 = x_w1 * x_w3
         return self.w2(x_w1_w3)
 
+
 class RoPE(nn.Module):
     def __init__(
             self,

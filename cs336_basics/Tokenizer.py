@@ -2,7 +2,7 @@ import os
 import json
 import regex as re
 from collections import Counter
-from typing import Iterable, Iterator
+from collections.abc import Iterable, Iterator
 from concurrent.futures import ProcessPoolExecutor
 
 from .tokenizer_utils import get_freqs_of_words_and_pairs, find_chunk_boundaries, gpt2_bytes_to_unicode, split_special_tokens, PAT
